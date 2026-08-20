@@ -54,6 +54,27 @@ fn scroll_up() {
     assert_eq!(grid[Line(9)].occ, 0);
 }
 
+#[test]
+fn full_screen_scroll_epoch_tracks_rotation_after_history_is_full() {
+    let mut grid = Grid::<usize>::new(2, 1, 1);
+    let region = Line(0)..Line(2);
+
+    grid.scroll_up::<usize>(&region, 1);
+    assert_eq!(grid.history_size(), 1);
+    assert_eq!(grid.scroll_epoch(), 1);
+
+    grid.scroll_up::<usize>(&region, 1);
+    assert_eq!(grid.history_size(), 1);
+    assert_eq!(grid.scroll_epoch(), 2);
+}
+
+#[test]
+fn partial_scroll_region_does_not_advance_epoch() {
+    let mut grid = Grid::<usize>::new(4, 1, 10);
+    grid.scroll_up::<usize>(&(Line(1)..Line(4)), 1);
+    assert_eq!(grid.scroll_epoch(), 0);
+}
+
 // Scroll down moves lines downward.
 #[test]
 fn scroll_down() {

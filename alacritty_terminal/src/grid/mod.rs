@@ -135,6 +135,12 @@ pub struct Grid<T> {
 
     /// Maximum number of lines in history.
     max_scroll_limit: usize,
+
+    /// Number of physical rows rotated out through full-screen upward scrolling.
+    ///
+    /// This remains monotonic when the history buffer is full, unlike [`Grid::history_size`].
+    #[cfg_attr(feature = "serde", serde(skip))]
+    scroll_epoch: u64,
 }
 
 impl<T: GridCell + Default + PartialEq> Grid<T> {
@@ -147,6 +153,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
             cursor: Cursor::default(),
             lines,
             columns,
+            scroll_epoch: 0,
         }
     }
 
@@ -270,6 +277,8 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
 
         // Only rotate the entire history if the active region starts at the top.
         if region.start == 0 {
+            self.scroll_epoch = self.scroll_epoch.wrapping_add(positions as u64);
+
             // Create scrollback for the new lines.
             self.increase_scroll_limit(positions);
 
@@ -353,6 +362,12 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
 }
 
 impl<T> Grid<T> {
+    /// Number of rows rotated by full-screen upward scrolling.
+    #[inline]
+    pub fn scroll_epoch(&self) -> u64 {
+        self.scroll_epoch
+    }
+
     /// Reset a visible region within the grid.
     pub fn reset_region<D, R: RangeBounds<Line>>(&mut self, bounds: R)
     where
