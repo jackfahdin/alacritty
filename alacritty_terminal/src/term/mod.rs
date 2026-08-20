@@ -327,6 +327,15 @@ pub struct Term<T> {
 
     /// Config directly for the terminal.
     config: Config,
+
+    /// Generation of presentation state on the primary screen.
+    primary_screen_generation: u64,
+
+    /// Generation of presentation state on the alternate screen.
+    alternate_screen_generation: u64,
+
+    /// Number of terminal resets (RIS), wrapping on overflow.
+    reset_generation: u64,
 }
 
 /// Configuration options for the [`Term`].
@@ -441,6 +450,9 @@ impl<T> Term<T> {
             selection: Default::default(),
             title: Default::default(),
             mode: Default::default(),
+            primary_screen_generation: 0,
+            alternate_screen_generation: 0,
+            reset_generation: 0,
         }
     }
 
@@ -710,9 +722,49 @@ impl<T> Term<T> {
         &self.mode
     }
 
+    /// Full-screen upward scroll epoch for the stable primary-screen identity.
+    #[inline]
+    pub fn primary_grid_scroll_epoch(&self) -> u64 {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.inactive_grid.scroll_epoch()
+        } else {
+            self.grid.scroll_epoch()
+        }
+    }
+
+    /// Full-screen upward scroll epoch for the stable alternate-screen identity.
+    #[inline]
+    pub fn alternate_grid_scroll_epoch(&self) -> u64 {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.grid.scroll_epoch()
+        } else {
+            self.inactive_grid.scroll_epoch()
+        }
+    }
+
+    /// Presentation generation for the primary screen.
+    #[inline]
+    pub fn primary_screen_generation(&self) -> u64 {
+        self.primary_screen_generation
+    }
+
+    /// Presentation generation for the alternate screen.
+    #[inline]
+    pub fn alternate_screen_generation(&self) -> u64 {
+        self.alternate_screen_generation
+    }
+
+    /// Number of terminal resets (RIS), wrapping on overflow.
+    #[inline]
+    pub fn reset_generation(&self) -> u64 {
+        self.reset_generation
+    }
+
     /// Swap primary and alternate screen buffer.
     pub fn swap_alt(&mut self) {
         if !self.mode.contains(TermMode::ALT_SCREEN) {
+            self.alternate_screen_generation = self.alternate_screen_generation.wrapping_add(1);
+
             // Set alt screen cursor to the current primary screen cursor.
             self.inactive_grid.cursor = self.grid.cursor.clone();
 
@@ -1833,6 +1885,10 @@ impl<T: EventListener> Handler for Term<T> {
     /// Reset all important fields in the term struct.
     #[inline]
     fn reset_state(&mut self) {
+        self.reset_generation = self.reset_generation.wrapping_add(1);
+        self.primary_screen_generation = self.primary_screen_generation.wrapping_add(1);
+        self.alternate_screen_generation = self.alternate_screen_generation.wrapping_add(1);
+
         if self.mode.contains(TermMode::ALT_SCREEN) {
             mem::swap(&mut self.grid, &mut self.inactive_grid);
         }
@@ -3298,5 +3354,34 @@ mod tests {
         assert_eq!(version_number("0.1.2-dev"), 1_02);
         assert_eq!(version_number("1.2.3-dev"), 1_02_03);
         assert_eq!(version_number("999.99.99"), 9_99_99_99);
+    }
+
+    #[test]
+    fn screen_observation_identity_survives_alt_swap_and_reset() {
+        let size = TermSize::new(2, 2);
+        let mut term = Term::new(Config::default(), &size, VoidListener);
+        term.grid.scroll_up::<Color>(&(Line(0)..Line(2)), 1);
+
+        assert_eq!(term.primary_grid_scroll_epoch(), 1);
+        assert_eq!(term.alternate_grid_scroll_epoch(), 0);
+        assert_eq!(term.alternate_screen_generation(), 0);
+
+        term.swap_alt();
+        assert_eq!(term.primary_grid_scroll_epoch(), 1);
+        assert_eq!(term.alternate_grid_scroll_epoch(), 0);
+        assert_eq!(term.alternate_screen_generation(), 1);
+
+        term.grid.scroll_up::<Color>(&(Line(0)..Line(2)), 1);
+        assert_eq!(term.primary_grid_scroll_epoch(), 1);
+        assert_eq!(term.alternate_grid_scroll_epoch(), 1);
+
+        term.swap_alt();
+        assert_eq!(term.primary_grid_scroll_epoch(), 1);
+        assert_eq!(term.alternate_grid_scroll_epoch(), 1);
+
+        term.reset_state();
+        assert_eq!(term.reset_generation(), 1);
+        assert_eq!(term.primary_screen_generation(), 1);
+        assert_eq!(term.alternate_screen_generation(), 2);
     }
 }
