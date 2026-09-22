@@ -5,8 +5,9 @@ to `alacritty_terminal` on top of an unmodified upstream base.
 
 - Fork: <https://github.com/nyakang/alacritty>
 - Upstream: <https://github.com/alacritty/alacritty>
-- Base revision: `ede2ac144da4dec4c075bfa803aacf3b3739bce6` ("Fix unbounded
-  zerowidth character limit", upstream `master`, `alacritty_terminal` 0.26.1-dev)
+- Base revision: `d692748d3f61253ebe9f5094320120d22f6a046f` ("Remove
+  unnecessary Row column count limit", upstream `master` on 2026-09-22,
+  `alacritty_terminal` 0.26.1-dev)
 - Branch: `nyaterm`
 - Crate: `alacritty_terminal` only. Nothing outside `alacritty_terminal/` is
   touched.
@@ -57,3 +58,7 @@ cargo clippy -p alacritty_terminal --all-targets   # warning-free
 `cargo fmt --check` is not meaningful here: upstream's `rustfmt.toml` uses
 nightly-only options, so a stable rustfmt reformats files this branch never
 touches. The patched files are unchanged in shape from the previous base.
+
+The 2026-09-22 merge to `d692748d3f` applied without conflicts. It removes
+upstream's obsolete per-row column count limit while retaining NyaTerm's grid
+scroll epochs and screen generations.
