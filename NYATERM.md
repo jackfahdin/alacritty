@@ -5,9 +5,7 @@ to `alacritty_terminal` on top of an unmodified upstream base.
 
 - Fork: <https://github.com/nyakang/alacritty>
 - Upstream: <https://github.com/alacritty/alacritty>
-- Base revision: `d692748d3f61253ebe9f5094320120d22f6a046f` ("Remove
-  unnecessary Row column count limit", upstream `master` on 2026-09-22,
-  `alacritty_terminal` 0.26.1-dev)
+- Base revision: `29dc55375da817d53540f4caefbe708703c57b07` (upstream `master`, 2026-10-13)
 - Branch: `nyaterm`
 - Crate: `alacritty_terminal` only. Nothing outside `alacritty_terminal/` is
   touched.
@@ -62,3 +60,28 @@ touches. The patched files are unchanged in shape from the previous base.
 The 2026-09-22 merge to `d692748d3f` applied without conflicts. It removes
 upstream's obsolete per-row column count limit while retaining NyaTerm's grid
 scroll epochs and screen generations.
+
+## 2026-10-13 upstream rebase
+
+Upstream `master` is fixed at `29dc55375da817d53540f4caefbe708703c57b07`.
+Previous published NyaTerm head: `e3d2ce97748039dedcd9316778d61d65c7b8ff2e`.
+The previous branch is retained locally as `backup/nyaterm-20261013`.
+
+Replay commits before this documentation update:
+
+- `828c56e8e8fefeaac0e617184d3f7371ac05ef81` feat(grid): track a wrapping scroll epoch per grid
+- `1c2bbd3b995323cd287409b4cdc2ce803260f2c2` feat(term): expose stable per-screen epochs and generations
+- `f4cece9e14904b919d2665374fb63ad8e781c1f3` docs: record the NyaTerm fork baseline and patch set
+- `adc66d0c9383229d6d78192e5cd4f0d3972e069d` docs: update the NyaTerm fork baseline
+
+Both scroll epoch and per-screen/reset generation patches replayed unchanged.
+Windows validation passed: `cargo test -p alacritty_terminal` (137 library,
+45 reference and 1 documentation tests), and
+`cargo clippy -p alacritty_terminal --all-targets`.
+Stable whole-workspace formatting is excluded for the upstream nightly format policy.
+
+
+Validation is on Windows; native macOS/Linux checks are delegated to the
+branch workflow. Interactive GUI/file-drop and real-server authentication
+checks were not performed by this update. Their outcomes must not be inferred
+from scripted peers or compile checks.
