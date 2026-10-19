@@ -5,7 +5,7 @@ to `alacritty_terminal` on top of an unmodified upstream base.
 
 - Fork: <https://github.com/nyakang/alacritty>
 - Upstream: <https://github.com/alacritty/alacritty>
-- Base revision: `29dc55375da817d53540f4caefbe708703c57b07` (upstream `master`, 2026-10-13)
+- Base revision: `542147067dd016fc5f49120ef0ba605a98a4e3a7` (upstream `master`, 2026-10-20)
 - Branch: `nyaterm`
 - Crate: `alacritty_terminal` only. Nothing outside `alacritty_terminal/` is
   touched.
@@ -85,3 +85,16 @@ Validation is on Windows; native macOS/Linux checks are delegated to the
 branch workflow. Interactive GUI/file-drop and real-server authentication
 checks were not performed by this update. Their outcomes must not be inferred
 from scripted peers or compile checks.
+
+## 2026-10-20 upstream rebase
+
+Fixed upstream target: `542147067dd016fc5f49120ef0ba605a98a4e3a7`.
+Previous published head: `4155cc1d57788444594d9d31cf233568ef113ee8`.
+Original branch retained as local `backup/nyaterm-20261020`; the audit directory
+contains the original patch, history and final range-diff.
+
+Both grid scroll-epoch and per-screen/reset-generation commits replay unchanged.
+Windows validation: cargo test -p alacritty_terminal passed 137 library, 45
+reference and one documentation test; cargo clippy -p alacritty_terminal
+--all-targets passed. Stable whole-workspace fmt remains excluded under upstream
+nightly formatting policy. Native platform CI runs after publication.
