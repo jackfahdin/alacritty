@@ -5,7 +5,7 @@ to `alacritty_terminal` on top of an unmodified upstream base.
 
 - Fork: <https://github.com/nyakang/alacritty>
 - Upstream: <https://github.com/alacritty/alacritty>
-- Base revision: `542147067dd016fc5f49120ef0ba605a98a4e3a7` (upstream `master`, 2026-10-20)
+- Base revision: `aecf0f600fa840a415b55da5cf34fbeaec39ac32` (fixed upstream target, 2026-11-03)
 - Branch: `nyaterm`
 - Crate: `alacritty_terminal` only. Nothing outside `alacritty_terminal/` is
   touched.
@@ -15,6 +15,14 @@ applies if its version still satisfies the requirement, so the workspace asks fo
 `alacritty_terminal = "0.26.1-dev"` to match this base. The previous base was the
 `0.17.0` release commit, which is not an ancestor of `master`: upstream released
 0.17.0 on its own line and moved `master` straight to 0.18.0-dev.
+
+## Current upstream sync (2026-11-03)
+
+Both production patches replay unchanged: per-grid scroll epoch and stable primary/alternate screen generations. No standalone Alacritty application adaptation is included.
+
+Windows: cargo test -p alacritty_terminal (library, reference terminals and documentation) and cargo clippy -p alacritty_terminal --all-targets passed. NyaTerm terminal check passed. Other platforms were not exercised.
+
+Previous published revision: `3b60b2ed9544cad2cbba9e92fa0785e885cb4af1`. Backup: `backup/nyaterm-20261103`. Older dated validation sections below describe historical baselines.
 
 ## Patches
 
