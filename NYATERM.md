@@ -33,6 +33,11 @@ scrolling and structural invalidation clear that memo, so subsequent writes to
 the same coordinate remain observable. `initialize_all` also invalidates the
 summary before directly initializing storage.
 
+The follow-up moves the last-row memo outside the optional summary, so the
+per-cell hot path needs one row comparison; only a row transition checks whether
+tracking is enabled. The memo carries no observation data when tracking is off
+and remains skipped by serialization.
+
 Windows validation: `cargo test -p alacritty_terminal` (including the new
 drain/rewrite/initialization regression) and
 `cargo clippy -p alacritty_terminal --all-targets` passed.
