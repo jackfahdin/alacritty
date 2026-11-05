@@ -744,6 +744,28 @@ impl<T> Term<T> {
         }
     }
 
+    /// Drain mutations for the stable primary screen, whether active or not.
+    pub fn take_primary_grid_presentation_changes(
+        &mut self,
+    ) -> Option<crate::grid::GridPresentationChanges> {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.inactive_grid.take_presentation_changes()
+        } else {
+            self.grid.take_presentation_changes()
+        }
+    }
+
+    /// Drain mutations for the stable alternate screen, whether active or not.
+    pub fn take_alternate_grid_presentation_changes(
+        &mut self,
+    ) -> Option<crate::grid::GridPresentationChanges> {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.grid.take_presentation_changes()
+        } else {
+            self.inactive_grid.take_presentation_changes()
+        }
+    }
+
     /// Full-screen upward scroll epoch for the stable primary-screen identity.
     #[inline]
     pub fn primary_grid_scroll_epoch(&self) -> u64 {
