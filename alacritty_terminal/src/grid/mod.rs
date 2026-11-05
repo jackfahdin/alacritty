@@ -147,6 +147,11 @@ pub struct Grid<T> {
 
     #[cfg_attr(feature = "serde", serde(skip))]
     presentation: Option<PresentationTracker>,
+
+    // Cache outside the optional summary so repeated cell writes need one
+    // comparison before taking the normal storage indexing path.
+    #[cfg_attr(feature = "serde", serde(skip))]
+    presentation_last_row: i32,
 }
 
 impl<T: GridCell + Default + PartialEq> Grid<T> {
@@ -161,6 +166,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
             columns,
             scroll_epoch: 0,
             presentation: None,
+            presentation_last_row: i32::MIN,
         }
     }
 
@@ -501,7 +507,10 @@ impl<T> Index<Line> for Grid<T> {
 impl<T> IndexMut<Line> for Grid<T> {
     #[inline]
     fn index_mut(&mut self, index: Line) -> &mut Row<T> {
-        self.mark_presentation_row(index);
+        if self.presentation_last_row != index.0 {
+            self.presentation_last_row = index.0;
+            self.mark_presentation_rows(i64::from(index.0), i64::from(index.0) + 1);
+        }
         &mut self.raw[index]
     }
 }
