@@ -432,6 +432,7 @@ impl<T> Grid<T> {
     where
         T: GridCell + Default,
     {
+        self.mark_presentation_full();
         // Remove all cached lines to clear them of any content.
         self.truncate();
 
@@ -500,7 +501,7 @@ impl<T> Index<Line> for Grid<T> {
 impl<T> IndexMut<Line> for Grid<T> {
     #[inline]
     fn index_mut(&mut self, index: Line) -> &mut Row<T> {
-        self.mark_presentation_rows(i64::from(index.0), i64::from(index.0) + 1);
+        self.mark_presentation_row(index);
         &mut self.raw[index]
     }
 }

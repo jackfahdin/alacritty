@@ -22,12 +22,25 @@ pub struct GridPresentationChanges {
     pub full_scan: bool,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub(super) struct PresentationTracker {
     generation_scroll_epoch: u64,
     discarded_wraps: u64,
     dirty: Option<Range<i64>>,
     full_scan: bool,
+    last_row: i64,
+}
+
+impl Default for PresentationTracker {
+    fn default() -> Self {
+        Self {
+            generation_scroll_epoch: 0,
+            discarded_wraps: 0,
+            dirty: None,
+            full_scan: false,
+            last_row: i64::MIN,
+        }
+    }
 }
 
 impl<T> Grid<T> {
@@ -37,6 +50,20 @@ impl<T> Grid<T> {
             full_scan: true,
             ..PresentationTracker::default()
         });
+    }
+
+    #[inline]
+    pub(super) fn mark_presentation_row(&mut self, row: Line) {
+        let Some(tracking) = self.presentation.as_mut() else { return };
+        let row = i64::from(row.0);
+        // A printable character can acquire the same row several times. Only
+        // the first access needs to union bounds; drains and structural edits
+        // invalidate this memo before that coordinate can describe new content.
+        if tracking.last_row == row {
+            return;
+        }
+        tracking.last_row = row;
+        self.mark_presentation_rows(row, row + 1);
     }
 
     #[inline]
@@ -64,11 +91,13 @@ impl<T> Grid<T> {
         if let Some(tracking) = self.presentation.as_mut() {
             tracking.full_scan = true;
             tracking.dirty = None;
+            tracking.last_row = i64::MIN;
         }
     }
 
     pub(super) fn scroll_presentation_up(&mut self, positions: usize, bottom: i32) {
         if let Some(tracking) = self.presentation.as_mut() {
+            tracking.last_row = i64::MIN;
             if let Some(range) = tracking.dirty.as_mut() {
                 range.start = range.start.saturating_sub(positions as i64);
                 range.end = range.end.saturating_sub(positions as i64);
@@ -102,6 +131,7 @@ impl<T: GridCell> Grid<T> {
         let first = i64::from(self.topmost_line().0);
         let end = self.screen_lines() as i64;
         let tracking = self.presentation.as_mut()?;
+        tracking.last_row = i64::MIN;
         let full_scan = std::mem::take(&mut tracking.full_scan);
         let rows = tracking.dirty.take().and_then(|range| {
             let start = range.start.max(first);
@@ -136,6 +166,20 @@ mod tests {
     use crate::grid::{Dimensions, Grid};
     use crate::index::{Column, Line};
     use crate::term::cell::{Cell, Flags};
+
+    #[test]
+    fn same_row_writes_are_observed_again_after_draining_and_initializing() {
+        let mut grid = Grid::<Cell>::new(2, 1, 2);
+        grid.set_presentation_tracking(true);
+        grid.take_presentation_changes();
+        for _ in 0..3 {
+            grid[Line(1)][Column(0)].flags.insert(Flags::WRAPLINE);
+            grid[Line(1)][Column(0)].flags.remove(Flags::WRAPLINE);
+            assert_eq!(grid.take_presentation_changes().unwrap().rows, Some(Line(1)..Line(2)));
+        }
+        grid.initialize_all();
+        assert!(grid.take_presentation_changes().unwrap().full_scan);
+    }
 
     #[test]
     fn changes_follow_scrolled_rows_and_drain_without_resetting_totals() {
