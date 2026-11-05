@@ -26,6 +26,18 @@ Previous published revision: `3b60b2ed9544cad2cbba9e92fa0785e885cb4af1`. Backup:
 
 ## Patches
 
+### 2026-11-05 retained-row eviction statistics
+
+Opt-in per-grid presentation statistics count WRAPLINE endings immediately before
+scroll eviction, explicit history shrinking or history clearing destroys them.
+Stable primary/alternate accessors include the generation's starting scroll epoch,
+so hosts can consume a whole input batch even across screen resets. These fields
+are runtime-only and do not change terminal serialization or ANSI behavior.
+This replaces NyaTerm PR #1139's need to parse in scrollback-sized byte slices.
+
+Windows validation: `cargo test -p alacritty_terminal` passed (including eviction
+and generation regression tests, upstream reference terminals and documentation).
+
 1. `feat(grid): track a wrapping scroll epoch per grid` — `Grid::scroll_epoch`
    counts physical rows rotated out by full-screen upward scrolling.
    `Grid::history_size()` cannot serve this purpose: once scrollback reaches
