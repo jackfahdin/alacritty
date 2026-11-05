@@ -11,6 +11,9 @@ use crate::term::cell::{Flags, ResetDiscriminant};
 use crate::vte::ansi::{CharsetIndex, StandardCharset};
 
 pub mod resize;
+mod presentation;
+pub use presentation::GridPresentationStats;
+use presentation::PresentationTracker;
 mod row;
 mod storage;
 #[cfg(test)]
@@ -141,6 +144,9 @@ pub struct Grid<T> {
     /// This remains monotonic when the history buffer is full, unlike [`Grid::history_size`].
     #[cfg_attr(feature = "serde", serde(skip))]
     scroll_epoch: u64,
+
+    #[cfg_attr(feature = "serde", serde(skip))]
+    presentation: Option<PresentationTracker>,
 }
 
 impl<T: GridCell + Default + PartialEq> Grid<T> {
@@ -154,6 +160,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
             lines,
             columns,
             scroll_epoch: 0,
+            presentation: None,
         }
     }
 
@@ -161,6 +168,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
     pub fn update_history(&mut self, history_size: usize) {
         let current_history_size = self.history_size();
         if current_history_size > history_size {
+            self.record_discarded_rows(current_history_size - history_size);
             self.raw.shrink_lines(current_history_size - history_size);
         }
         self.display_offset = min(self.display_offset, history_size);
@@ -277,6 +285,8 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
 
         // Only rotate the entire history if the active region starts at the top.
         if region.start == 0 {
+            let evicted = positions.saturating_sub(self.max_scroll_limit - self.history_size());
+            self.record_discarded_rows(evicted);
             self.scroll_epoch = self.scroll_epoch.wrapping_add(positions as u64);
 
             // Create scrollback for the new lines.
@@ -395,7 +405,11 @@ impl<T> Grid<T> {
     }
 
     #[inline]
-    pub fn clear_history(&mut self) {
+    pub fn clear_history(&mut self)
+    where
+        T: GridCell,
+    {
+        self.record_discarded_rows(self.history_size());
         // Explicitly purge all lines from history.
         self.raw.shrink_lines(self.history_size());
 

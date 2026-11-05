@@ -722,6 +722,28 @@ impl<T> Term<T> {
         &self.mode
     }
 
+    /// Enable bounded presentation statistics for both stable screen identities.
+    pub fn set_presentation_tracking(&mut self, enabled: bool) {
+        self.grid.set_presentation_tracking(enabled);
+        self.inactive_grid.set_presentation_tracking(enabled);
+    }
+
+    pub fn primary_grid_presentation_stats(&self) -> Option<crate::grid::GridPresentationStats> {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.inactive_grid.presentation_stats()
+        } else {
+            self.grid.presentation_stats()
+        }
+    }
+
+    pub fn alternate_grid_presentation_stats(&self) -> Option<crate::grid::GridPresentationStats> {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            self.grid.presentation_stats()
+        } else {
+            self.inactive_grid.presentation_stats()
+        }
+    }
+
     /// Full-screen upward scroll epoch for the stable primary-screen identity.
     #[inline]
     pub fn primary_grid_scroll_epoch(&self) -> u64 {
@@ -773,6 +795,7 @@ impl<T> Term<T> {
 
             // Reset alternate screen contents.
             self.inactive_grid.reset_region(..);
+            self.inactive_grid.reset_presentation_generation();
         }
 
         mem::swap(&mut self.keyboard_mode_stack, &mut self.inactive_keyboard_mode_stack);
@@ -1896,6 +1919,8 @@ impl<T: EventListener> Handler for Term<T> {
         self.cursor_style = None;
         self.grid.reset();
         self.inactive_grid.reset();
+        self.grid.reset_presentation_generation();
+        self.inactive_grid.reset_presentation_generation();
         self.scroll_region = Line(0)..Line(self.screen_lines() as i32);
         self.tabs = TabStops::new(self.columns());
         self.title_stack = Vec::new();
