@@ -12,7 +12,7 @@ use crate::vte::ansi::{CharsetIndex, StandardCharset};
 
 pub mod resize;
 mod presentation;
-pub use presentation::GridPresentationStats;
+pub use presentation::{GridPresentationChanges, GridPresentationStats};
 use presentation::PresentationTracker;
 mod row;
 mod storage;
@@ -208,6 +208,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         T: ResetDiscriminant<D>,
         D: PartialEq,
     {
+        self.mark_presentation_full();
         // When rotating the entire region, just reset everything.
         if region.end - region.start <= positions {
             for i in (region.start.0..region.end.0).map(Line::from) {
@@ -269,6 +270,11 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         T: ResetDiscriminant<D>,
         D: PartialEq,
     {
+        if region.start == 0 && region.end.0 == self.lines as i32 {
+            self.scroll_presentation_up(positions, region.end.0);
+        } else {
+            self.mark_presentation_full();
+        }
         // When rotating the entire region with fixed lines at the top, just reset everything.
         if region.end - region.start <= positions && region.start != 0 {
             for i in (region.start.0..region.end.0).map(Line::from) {
@@ -330,6 +336,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         T: ResetDiscriminant<D>,
         D: PartialEq,
     {
+        self.mark_presentation_full();
         // Determine how many lines to scroll up by.
         let end = Point::new(Line(self.lines as i32 - 1), Column(self.columns()));
         let mut iter = self.iter_from(end);
@@ -357,6 +364,7 @@ impl<T: GridCell + Default + PartialEq> Grid<T> {
         T: ResetDiscriminant<D>,
         D: PartialEq,
     {
+        self.mark_presentation_full();
         self.clear_history();
 
         self.saved_cursor = Cursor::default();
@@ -384,6 +392,7 @@ impl<T> Grid<T> {
         T: ResetDiscriminant<D> + GridCell + Default,
         D: PartialEq,
     {
+        self.mark_presentation_full();
         let start = match bounds.start_bound() {
             Bound::Included(line) => *line,
             Bound::Excluded(line) => *line + 1,
@@ -491,6 +500,7 @@ impl<T> Index<Line> for Grid<T> {
 impl<T> IndexMut<Line> for Grid<T> {
     #[inline]
     fn index_mut(&mut self, index: Line) -> &mut Row<T> {
+        self.mark_presentation_rows(i64::from(index.0), i64::from(index.0) + 1);
         &mut self.raw[index]
     }
 }

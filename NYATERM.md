@@ -26,6 +26,21 @@ Previous published revision: `3b60b2ed9544cad2cbba9e92fa0785e885cb4af1`. Backup:
 
 ## Patches
 
+### 2026-11-05 bounded grid mutation summaries
+
+The opt-in tracker unions mutated row coordinates instead of allocating per-cell
+or per-row events. IndexMut covers cell writes; direct resets, reverse/partial
+scrolls and resize conservatively invalidate the retained grid. Full upward
+scrolls translate pending coordinates and add only newly cleared rows. Draining
+changes clamps to surviving rows and leaves eviction totals intact. Stable
+primary/alternate accessors remain usable after a screen swap within one batch.
+
+Windows validation: `cargo test -p alacritty_terminal` and
+`cargo clippy -p alacritty_terminal --all-targets` passed. NyaTerm's original
+295 terminal tests and new OSC-interruption / arbitrary-slicing / generation
+regressions passed against the local fork. Tracking stays disabled by default,
+uses constant memory and is skipped by serialization.
+
 ### 2026-11-05 retained-row eviction statistics
 
 Opt-in per-grid presentation statistics count WRAPLINE endings immediately before

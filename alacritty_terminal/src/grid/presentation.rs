@@ -1,5 +1,7 @@
 //! Optional, bounded observations for hosts maintaining logical row identities.
 
+use std::ops::Range;
+
 use crate::grid::{Dimensions, Grid, GridCell};
 use crate::index::Line;
 use crate::term::cell::Flags;
@@ -13,18 +15,66 @@ pub struct GridPresentationStats {
     pub discarded_wraps: u64,
 }
 
+/// Bounded union of rows mutated since the last drain, in current grid coordinates.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GridPresentationChanges {
+    pub rows: Option<Range<Line>>,
+    pub full_scan: bool,
+}
+
 #[derive(Clone, Debug, Default)]
 pub(super) struct PresentationTracker {
     generation_scroll_epoch: u64,
     discarded_wraps: u64,
+    dirty: Option<Range<i64>>,
+    full_scan: bool,
 }
 
 impl<T> Grid<T> {
     pub fn set_presentation_tracking(&mut self, enabled: bool) {
         self.presentation = enabled.then(|| PresentationTracker {
             generation_scroll_epoch: self.scroll_epoch,
+            full_scan: true,
             ..PresentationTracker::default()
         });
+    }
+
+    #[inline]
+    pub(super) fn mark_presentation_rows(&mut self, start: i64, end: i64) {
+        let Some(tracking) = self.presentation.as_mut() else { return };
+        if tracking.full_scan || start >= end {
+            return;
+        }
+        match tracking.dirty.as_mut() {
+            Some(range) => {
+                // Most accesses write another cell on the same row. Avoid
+                // touching tracker storage again until the range expands.
+                if start < range.start {
+                    range.start = start;
+                }
+                if end > range.end {
+                    range.end = end;
+                }
+            },
+            None => tracking.dirty = Some(start..end),
+        }
+    }
+
+    pub(super) fn mark_presentation_full(&mut self) {
+        if let Some(tracking) = self.presentation.as_mut() {
+            tracking.full_scan = true;
+            tracking.dirty = None;
+        }
+    }
+
+    pub(super) fn scroll_presentation_up(&mut self, positions: usize, bottom: i32) {
+        if let Some(tracking) = self.presentation.as_mut() {
+            if let Some(range) = tracking.dirty.as_mut() {
+                range.start = range.start.saturating_sub(positions as i64);
+                range.end = range.end.saturating_sub(positions as i64);
+            }
+        }
+        self.mark_presentation_rows(i64::from(bottom) - positions as i64, i64::from(bottom));
     }
 
     pub fn presentation_stats(&self) -> Option<GridPresentationStats> {
@@ -39,9 +89,26 @@ impl<T> Grid<T> {
         if let Some(tracking) = self.presentation.as_mut() {
             *tracking = PresentationTracker {
                 generation_scroll_epoch: self.scroll_epoch,
+                full_scan: true,
                 ..PresentationTracker::default()
             };
         }
+    }
+}
+
+impl<T: GridCell> Grid<T> {
+    /// Draining mutations does not reset cumulative eviction statistics.
+    pub fn take_presentation_changes(&mut self) -> Option<GridPresentationChanges> {
+        let first = i64::from(self.topmost_line().0);
+        let end = self.screen_lines() as i64;
+        let tracking = self.presentation.as_mut()?;
+        let full_scan = std::mem::take(&mut tracking.full_scan);
+        let rows = tracking.dirty.take().and_then(|range| {
+            let start = range.start.max(first);
+            let end = range.end.min(end);
+            (start < end).then_some(Line(start as i32)..Line(end as i32))
+        });
+        Some(GridPresentationChanges { rows, full_scan })
     }
 }
 
@@ -69,6 +136,25 @@ mod tests {
     use crate::grid::{Dimensions, Grid};
     use crate::index::{Column, Line};
     use crate::term::cell::{Cell, Flags};
+
+    #[test]
+    fn changes_follow_scrolled_rows_and_drain_without_resetting_totals() {
+        let mut grid = Grid::<Cell>::new(2, 1, 2);
+        grid.set_presentation_tracking(true);
+        assert!(grid.take_presentation_changes().unwrap().full_scan);
+        grid[Line(0)][Column(0)].flags.insert(Flags::WRAPLINE);
+        grid.scroll_up(&(Line(0)..Line(2)), 1);
+        assert_eq!(grid.take_presentation_changes().unwrap().rows, Some(Line(-1)..Line(2)));
+        assert_eq!(grid.take_presentation_changes().unwrap().rows, None);
+        for _ in 0..10_000 {
+            grid.scroll_up(&(Line(0)..Line(2)), 1);
+        }
+        let before = grid.presentation_stats();
+        assert_eq!(grid.take_presentation_changes().unwrap().rows, Some(Line(-2)..Line(2)));
+        assert_eq!(grid.presentation_stats(), before);
+        grid.scroll_down(&(Line(0)..Line(2)), 1);
+        assert!(grid.take_presentation_changes().unwrap().full_scan);
+    }
 
     #[test]
     fn eviction_counts_wraps_before_rows_are_reused() {
