@@ -26,6 +26,17 @@ Previous published revision: `3b60b2ed9544cad2cbba9e92fa0785e885cb4af1`. Backup:
 
 ## Patches
 
+### 2026-11-05 repeated-row tracking fast path
+
+Consecutive mutable accesses to the same row reuse the pending range. Draining,
+scrolling and structural invalidation clear that memo, so subsequent writes to
+the same coordinate remain observable. `initialize_all` also invalidates the
+summary before directly initializing storage.
+
+Windows validation: `cargo test -p alacritty_terminal` (including the new
+drain/rewrite/initialization regression) and
+`cargo clippy -p alacritty_terminal --all-targets` passed.
+
 ### 2026-11-05 bounded grid mutation summaries
 
 The opt-in tracker unions mutated row coordinates instead of allocating per-cell
