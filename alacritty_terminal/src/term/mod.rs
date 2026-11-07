@@ -658,6 +658,15 @@ impl<T> Term<T> {
         &self.grid
     }
 
+    /// Read the primary screen without switching screens or changing protocol state.
+    pub fn primary_grid(&self) -> &Grid<Cell> {
+        if self.mode.contains(TermMode::ALT_SCREEN) {
+            &self.inactive_grid
+        } else {
+            &self.grid
+        }
+    }
+
     /// Mutable access to the raw grid data structure.
     pub fn grid_mut(&mut self) -> &mut Grid<Cell> {
         &mut self.grid
@@ -3401,6 +3410,21 @@ mod tests {
         assert_eq!(version_number("0.1.2-dev"), 1_02);
         assert_eq!(version_number("1.2.3-dev"), 1_02_03);
         assert_eq!(version_number("999.99.99"), 9_99_99_99);
+    }
+
+    #[test]
+    fn primary_grid_remains_readable_during_alternate_screen_resize() {
+        let mut term = Term::new(Config::default(), &TermSize::new(8, 3), VoidListener);
+        term.grid_mut()[Line(0)][Column(0)].c = 'p';
+        term.swap_alt();
+        term.grid_mut()[Line(0)][Column(0)].c = 'a';
+        assert_eq!(term.primary_grid()[Line(0)][Column(0)].c, 'p');
+        term.resize(TermSize::new(4, 3));
+        assert_eq!(term.primary_grid().columns(), 4);
+        assert_eq!(term.primary_grid()[Line(0)][Column(0)].c, 'p');
+        assert_eq!(term.grid()[Line(0)][Column(0)].c, 'a');
+        term.swap_alt();
+        assert_eq!(term.primary_grid()[Line(0)][Column(0)].c, 'p');
     }
 
     #[test]
