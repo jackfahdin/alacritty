@@ -26,6 +26,20 @@ Previous published revision: `3b60b2ed9544cad2cbba9e92fa0785e885cb4af1`. Backup:
 
 ## Patches
 
+### 2026-11-07 read-only primary grid access
+
+`Term::primary_grid()` reads the primary buffer while either screen is active.
+NyaTerm uses it to remap retained command anchors when a terminal width changes,
+including resizes inside a TUI. It neither switches screens nor changes ANSI,
+serialization, decoder or mutable ownership contracts.
+
+Linux validation: `cargo test -p alacritty_terminal` passed (140 unit tests,
+45 reference terminals and 1 documentation test), including a primary/alternate
+resize regression. `cargo clippy -p alacritty_terminal --all-targets` encounters
+three pre-existing `clippy::question_mark` errors in `tty/unix.rs` with Rust 1.99.
+Windows was not exercised for this patch.
+
+
 ### 2026-11-05 repeated-row tracking fast path
 
 Consecutive mutable accesses to the same row reuse the pending range. Draining,
