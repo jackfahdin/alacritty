@@ -1,5 +1,18 @@
 # NyaTerm fork notes
 
+## Current upstream sync (2026-11-14)
+
+- Upstream base: `aa5d942f46c40184a3f214830ff5f7989f4733a1` (`https://github.com/alacritty/alacritty`, `master`).
+- Previous published revision: `eff8dffbd4c6063387c97c9c74a6428f329eee47`.
+- Preserved backup: `backup/nyaterm-20261114`; branch: `nyaterm`.
+
+Retain all twelve NyaTerm terminal patches unchanged while rebasing onto upstream master.
+
+Windows, Rust 1.99.1: alacritty_terminal tests passed (140 library, 45 reference and one doc test); package clippy passed.
+
+Earlier dated sections below describe historical revisions and validation.
+
+
 This branch carries [NyaTerm](https://github.com/nyakang/nyaterm)'s local changes
 to `alacritty_terminal` on top of an unmodified upstream base.
 
