@@ -325,6 +325,9 @@ pub struct Term<T> {
     /// Information about damaged cells.
     damage: TermDamageState,
 
+    /// Host policy, independent of application-controlled modes and terminal resets.
+    ignore_alternate_screen: bool,
+
     /// Config directly for the terminal.
     config: Config,
 
@@ -453,7 +456,20 @@ impl<T> Term<T> {
             primary_screen_generation: 0,
             alternate_screen_generation: 0,
             reset_generation: 0,
+            ignore_alternate_screen: false,
         }
+    }
+
+    /// Ignore future requests to enter the alternate screen.
+    ///
+    /// Changing this policy does not switch screens. An application already on the alternate
+    /// screen can still leave it normally, and RIS/configuration changes preserve this policy.
+    pub fn set_ignore_alternate_screen(&mut self, enabled: bool) {
+        self.ignore_alternate_screen = enabled;
+    }
+
+    pub fn ignores_alternate_screen(&self) -> bool {
+        self.ignore_alternate_screen
     }
 
     /// Collect the information about the changes in the lines, which
@@ -2056,7 +2072,7 @@ impl<T: EventListener> Handler for Term<T> {
         match mode {
             NamedPrivateMode::UrgencyHints => self.mode.insert(TermMode::URGENCY_HINTS),
             NamedPrivateMode::SwapScreenAndSetRestoreCursor => {
-                if !self.mode.contains(TermMode::ALT_SCREEN) {
+                if !self.ignore_alternate_screen && !self.mode.contains(TermMode::ALT_SCREEN) {
                     self.swap_alt();
                 }
             },
