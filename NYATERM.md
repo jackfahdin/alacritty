@@ -1,5 +1,15 @@
 # NyaTerm fork notes
 
+## Upstream synchronization (2026-11-25)
+
+- Upstream base: `791efff6d74c66bee390c259e322626ca93aadb6` (alacritty/alacritty, master).
+- Previous published head: `5d6bf676e3ff6ebf31000d572a8e027e943ec269`.
+- Preserved remote backup: `backup/nyaterm-20261125-5d6bf676`.
+
+Retain the terminal patch series unchanged. The upstream change adds Windows ARM64 release CI.
+
+Linux x86_64, Rust 1.99.1: cargo test -p alacritty_terminal passed (library, reference and documentation tests). Clippy reports three existing question_mark findings in tty/unix.rs; stable rustfmt reports existing formatting differences. Windows ARM64 release execution was not exercised.
+
 ## Current upstream sync (2026-11-14)
 
 - Upstream base: `aa5d942f46c40184a3f214830ff5f7989f4733a1` (`https://github.com/alacritty/alacritty`, `master`).
