@@ -1,5 +1,15 @@
 # NyaTerm fork notes
 
+## Upstream synchronization (2026-11-25)
+
+- Upstream base: `791efff6d74c66bee390c259e322626ca93aadb6` (alacritty/alacritty, master).
+- Previous published head: `5d6bf676e3ff6ebf31000d572a8e027e943ec269`.
+- Preserved remote backup: `backup/nyaterm-20261125-5d6bf676`.
+
+Retain the terminal patch series unchanged. The upstream change adds Windows ARM64 release CI.
+
+Linux x86_64, Rust 1.99.1: cargo test -p alacritty_terminal passed (library, reference and documentation tests). Clippy reports three existing question_mark findings in tty/unix.rs; stable rustfmt reports existing formatting differences. Windows ARM64 release execution was not exercised.
+
 ## Current upstream sync (2026-11-14)
 
 - Upstream base: `aa5d942f46c40184a3f214830ff5f7989f4733a1` (`https://github.com/alacritty/alacritty`, `master`).
@@ -176,3 +186,27 @@ Windows validation: cargo test -p alacritty_terminal passed 137 library, 45
 reference and one documentation test; cargo clippy -p alacritty_terminal
 --all-targets passed. Stable whole-workspace fmt remains excluded under upstream
 nightly formatting policy. Native platform CI runs after publication.
+
+## 2026-11-24 host alternate-screen policy
+
+Base fork revision: `c81fc5409a47214ac4327c72e03e9349cd96fd30` on `nyaterm`.
+
+Add `Term::set_ignore_alternate_screen` and `Term::ignores_alternate_screen`.
+The default-off host policy suppresses the parsed DECSET 1049 operation without
+rewriting the byte stream. DECRST remains available to exit an already active
+alternate screen; RIS and config updates preserve the host policy. Queries
+continue reporting the actual terminal mode. No new support for modes 47/1047,
+no persisted format changes, and no standalone Alacritty UI changes.
+
+This replaces NyaTerm PR #1346's byte filter, which could join cancelled CSI
+fragments into new commands or miss mode changes containing executable C0 bytes.
+Tests cover every split offset, cancellation, BEL, mixed modes, mode queries,
+mid-session toggles, resets, and configuration updates.
+
+Linux, Rust 1.99: `cargo test -p alacritty_terminal` passed (140 unit tests,
+2 policy integration tests, 45 reference terminals and 1 doc test).
+`cargo clippy -p alacritty_terminal --all-targets` remains blocked by the three
+pre-existing `clippy::question_mark` errors in `tty/unix.rs` already recorded
+above. Re-running with `-- --cap-lints warn` passed with only those three warnings.
+The new test file was formatted without rewriting upstream sources. Windows and
+macOS runtime behavior was not exercised locally.
